@@ -1,0 +1,42 @@
+# ─── Ambiente virtuale ────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ─── Variabili d'ambiente ─────────────────────────────────────────────────────
+.env
+
+# ─── Database SQLite (usato nei test e in sviluppo) ───────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Cache Python ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ─── Cache pytest ─────────────────────────────────────────────────────────────
+.pytest_cache/
+.cache/
+
+# ─── Coverage e report ────────────────────────────────────────────────────────
+.coverage
+coverage.xml
+htmlcov/
+*.cover
+
+# ─── Editor e IDE ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Build e distribuzione ────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
