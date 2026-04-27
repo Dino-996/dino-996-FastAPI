@@ -1,164 +1,232 @@
-"""
-TEST CRUD DELLA TUA RISORSA
-─────────────────────────────
-Adatta questo file al tuo dominio:
-  - Rinomina il file (es. test_books.py, test_todos.py)
-  - Aggiorna ITEM e le URL (/items → /books, /todos...)
-  - Aggiorna i campi nei body delle richieste
-"""
+import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.user import User
+from app.models.article import Article
+from app.core.security import hash_password
+from datetime import datetime, timezone
 
-USER = {"email": "test@example.com", "password": "password123"}
-# ← Aggiorna questi campi in base al tuo modello
-ITEM = {"name": "Item di test", "description": "Descrizione di test"}
+# Test data
 
+ADMIN = {"email": "admin@google.com", "password": "admin"}
 
-# ─── Helper: ottieni token di autenticazione ──────────────────────────────────
-async def get_auth_headers(client: AsyncClient) -> dict:
-    """
-    Registra un utente, fa login e restituisce gli header di autenticazione.
-    Riutilizzato in ogni test che richiede autenticazione.
-    """
-    await client.post("/auth/register", json=USER)
-    response = await client.post("/auth/login", json=USER)
+ARTICLE = {
+    "title": "Articolo di test",
+    "description": "Descrizione di test",
+    "tags": ["linux", "open-source"],
+    "date": "2024-01-01T00:00:00Z",
+    "excerpt": "Testo di anteprima",
+    "image": "https://example.com/img.jpg",
+    "imageAlt": "Immagine di test",
+}
+
+# Helper
+
+async def create_admin_and_login(client: AsyncClient, db: AsyncSession) -> dict:
+    """ Create the admin user directly in the db """
+    admin = User(
+        email=ADMIN["admin@gmail.com"],
+        hashed_password=hash_password(ADMIN["admin"]),
+        is_active=True,
+        is_admin=True,
+    )
+    db.add(admin)
+    await db.commit()
+
+    response = await client.post("/auth/login", json=ADMIN)
+    assert response.status_code == 200, "Login admin fallito"
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
 
-# ─── Test: creazione ──────────────────────────────────────────────────────────
-async def test_create_item_success(client: AsyncClient):
-    """Creazione corretta → 201 con dati dell'item."""
-    headers = await get_auth_headers(client)
-    response = await client.post("/items", json=ITEM, headers=headers)
-    assert response.status_code == 201
-    data = response.json()
-    assert data["name"] == ITEM["name"]
-    assert data["description"] == ITEM["description"]
-    assert "id" in data
-    assert "owner_id" in data
+# Pubblic reading
 
-
-async def test_create_item_no_auth(client: AsyncClient):
-    """Creazione senza token → 403 Forbidden."""
-    response = await client.post("/items", json=ITEM)
-    assert response.status_code == 403
-
-
-# ─── Test: lista ──────────────────────────────────────────────────────────────
-async def test_list_items_empty(client: AsyncClient):
-    """Lista vuota per un nuovo utente → 200 con lista vuota."""
-    headers = await get_auth_headers(client)
-    response = await client.get("/items", headers=headers)
+async def test_list_articles_public_empty(client: AsyncClient):
+    """Lista vuota senza token → 200 con lista vuota."""
+    response = await client.get("/articles")
     assert response.status_code == 200
     assert response.json() == []
 
 
-async def test_list_items_with_data(client: AsyncClient):
-    """Lista con due item → 200 con lista di 2 elementi."""
-    headers = await get_auth_headers(client)
-    await client.post("/items", json=ITEM, headers=headers)
-    await client.post("/items", json={"name": "Secondo", "description": "Altro"}, headers=headers)
-    response = await client.get("/items", headers=headers)
-    assert response.status_code == 200
-    assert len(response.json()) == 2
-
-
-async def test_list_items_pagination(client: AsyncClient):
-    """Paginazione: limit e offset funzionano correttamente."""
-    headers = await get_auth_headers(client)
-    for i in range(5):
-        await client.post("/items", json={"name": f"Item {i}", "description": "x"}, headers=headers)
-    # Prima pagina: 2 elementi
-    response = await client.get("/items?limit=2&offset=0", headers=headers)
-    assert len(response.json()) == 2
-    # Seconda pagina: altri 2 elementi
-    response = await client.get("/items?limit=2&offset=2", headers=headers)
-    assert len(response.json()) == 2
-
-
-# ─── Test: dettaglio ──────────────────────────────────────────────────────────
-async def test_get_item_success(client: AsyncClient):
-    """Dettaglio item esistente → 200 con dati corretti."""
-    headers = await get_auth_headers(client)
-    created = await client.post("/items", json=ITEM, headers=headers)
-    item_id = created.json()["id"]
-    response = await client.get(f"/items/{item_id}", headers=headers)
-    assert response.status_code == 200
-    assert response.json()["id"] == item_id
-
-
-async def test_get_item_not_found(client: AsyncClient):
-    """Item inesistente → 404 Not Found."""
-    headers = await get_auth_headers(client)
-    response = await client.get("/items/9999", headers=headers)
+async def test_get_article_public_not_found(client: AsyncClient):
+    """Articolo inesistente senza token → 404."""
+    response = await client.get("/articles/9999")
     assert response.status_code == 404
 
 
-# ─── Test: aggiornamento ──────────────────────────────────────────────────────
-async def test_update_item_success(client: AsyncClient):
-    """Aggiornamento parziale: solo name, description invariata."""
-    headers = await get_auth_headers(client)
-    created = await client.post("/items", json=ITEM, headers=headers)
-    item_id = created.json()["id"]
+async def test_list_articles_public_with_data(client: AsyncClient, db: AsyncSession):
+    """Lista pubblica con articoli → 200 con dati corretti."""
+    headers = await create_admin_and_login(client, db)
+    await client.post("/articles", json=ARTICLE, headers=headers)
+
+    # Lettura senza token
+    response = await client.get("/articles")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["title"] == ARTICLE["title"]
+
+
+async def test_get_article_public_success(client: AsyncClient, db: AsyncSession):
+    """Dettaglio articolo pubblico → 200 con dati corretti."""
+    headers = await create_admin_and_login(client, db)
+    created = await client.post("/articles", json=ARTICLE, headers=headers)
+    article_id = created.json()["id"]
+
+    response = await client.get(f"/articles/{article_id}")
+    assert response.status_code == 200
+    assert response.json()["id"] == article_id
+    assert response.json()["title"] == ARTICLE["title"]
+
+
+# ─── Test: paginazione ────────────────────────────────────────────────────────
+
+async def test_list_articles_pagination(client: AsyncClient, db: AsyncSession):
+    """Paginazione: limit e offset funzionano correttamente."""
+    headers = await create_admin_and_login(client, db)
+    for i in range(5):
+        await client.post("/articles", json={**ARTICLE, "title": f"Articolo {i}"}, headers=headers)
+
+    response = await client.get("/articles?limit=2&offset=0")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+    response = await client.get("/articles?limit=2&offset=2")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+    response = await client.get("/articles?limit=2&offset=4")
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
+async def test_list_articles_default_limit(client: AsyncClient, db: AsyncSession):
+    """Senza parametri il limite di default è 5."""
+    headers = await create_admin_and_login(client, db)
+    for i in range(7):
+        await client.post("/articles", json={**ARTICLE, "title": f"Articolo {i}"}, headers=headers)
+
+    response = await client.get("/articles")
+    assert response.status_code == 200
+    assert len(response.json()) == 5
+
+
+# ─── Test: creazione ─────────────────────────────────────────────────────────
+
+async def test_create_article_success(client: AsyncClient, db: AsyncSession):
+    """Creazione con admin → 201 con tutti i campi attesi."""
+    headers = await create_admin_and_login(client, db)
+    response = await client.post("/articles", json=ARTICLE, headers=headers)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["title"] == ARTICLE["title"]
+    assert data["description"] == ARTICLE["description"]
+    assert data["tags"] == ARTICLE["tags"]
+    assert data["excerpt"] == ARTICLE["excerpt"]
+    assert "id" in data
+
+
+async def test_create_article_no_token(client: AsyncClient):
+    """Creazione senza token → 403 Forbidden."""
+    response = await client.post("/articles", json=ARTICLE)
+    assert response.status_code == 403
+
+
+async def test_create_article_invalid_token(client: AsyncClient):
+    """Creazione con token falso → 401 Unauthorized."""
+    response = await client.post(
+        "/articles",
+        json=ARTICLE,
+        headers={"Authorization": "Bearer tokenfalso"}
+    )
+    assert response.status_code == 401
+
+
+async def test_create_article_missing_title(client: AsyncClient, db: AsyncSession):
+    """Creazione senza titolo (campo obbligatorio) → 422 Unprocessable Entity."""
+    headers = await create_admin_and_login(client, db)
+    payload = {k: v for k, v in ARTICLE.items() if k != "title"}
+    response = await client.post("/articles", json=payload, headers=headers)
+    assert response.status_code == 422
+
+
+async def test_create_article_missing_date(client: AsyncClient, db: AsyncSession):
+    """Creazione senza data (campo obbligatorio) → 422 Unprocessable Entity."""
+    headers = await create_admin_and_login(client, db)
+    payload = {k: v for k, v in ARTICLE.items() if k != "date"}
+    response = await client.post("/articles", json=payload, headers=headers)
+    assert response.status_code == 422
+
+
+async def test_create_article_optional_fields(client: AsyncClient, db: AsyncSession):
+    """Creazione con soli campi obbligatori → 201, campi opzionali sono None."""
+    headers = await create_admin_and_login(client, db)
+    payload = {"title": "Solo titolo", "date": "2024-06-01T00:00:00Z"}
+    response = await client.post("/articles", json=payload, headers=headers)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["description"] is None
+    assert data["excerpt"] is None
+    assert data["image"] is None
+    assert data["tags"] == []
+
+
+# ─── Test: aggiornamento ─────────────────────────────────────────────────────
+
+async def test_update_article_success(client: AsyncClient, db: AsyncSession):
+    """Aggiornamento parziale del titolo → 200, gli altri campi restano invariati."""
+    headers = await create_admin_and_login(client, db)
+    created = await client.post("/articles", json=ARTICLE, headers=headers)
+    article_id = created.json()["id"]
+
     response = await client.put(
-        f"/items/{item_id}",
-        json={"name": "Nome aggiornato"},
+        f"/articles/{article_id}",
+        json={"title": "Titolo aggiornato"},
         headers=headers
     )
     assert response.status_code == 200
-    assert response.json()["name"] == "Nome aggiornato"
-    # Description non deve cambiare
-    assert response.json()["description"] == ITEM["description"]
+    data = response.json()
+    assert data["title"] == "Titolo aggiornato"
+    assert data["description"] == ARTICLE["description"]
+    assert data["tags"] == ARTICLE["tags"]
 
 
-async def test_update_item_not_found(client: AsyncClient):
-    """Aggiornamento item inesistente → 404 Not Found."""
-    headers = await get_auth_headers(client)
-    response = await client.put("/items/9999", json={"name": "x"}, headers=headers)
+async def test_update_article_not_found(client: AsyncClient, db: AsyncSession):
+    """Aggiornamento articolo inesistente → 404."""
+    headers = await create_admin_and_login(client, db)
+    response = await client.put("/articles/9999", json={"title": "x"}, headers=headers)
     assert response.status_code == 404
 
 
-# ─── Test: eliminazione ───────────────────────────────────────────────────────
-async def test_delete_item_success(client: AsyncClient):
+async def test_update_article_no_token(client: AsyncClient):
+    """Aggiornamento senza token → 403 Forbidden."""
+    response = await client.put("/articles/1", json={"title": "x"})
+    assert response.status_code == 403
+
+
+# ─── Test: eliminazione ──────────────────────────────────────────────────────
+
+async def test_delete_article_success(client: AsyncClient, db: AsyncSession):
     """Eliminazione → 204, poi il GET restituisce 404."""
-    headers = await get_auth_headers(client)
-    created = await client.post("/items", json=ITEM, headers=headers)
-    item_id = created.json()["id"]
-    response = await client.delete(f"/items/{item_id}", headers=headers)
+    headers = await create_admin_and_login(client, db)
+    created = await client.post("/articles", json=ARTICLE, headers=headers)
+    article_id = created.json()["id"]
+
+    response = await client.delete(f"/articles/{article_id}", headers=headers)
     assert response.status_code == 204
-    # Verifica che l'item non esista più
-    response = await client.get(f"/items/{item_id}", headers=headers)
+
+    response = await client.get(f"/articles/{article_id}")
     assert response.status_code == 404
 
 
-async def test_delete_item_not_found(client: AsyncClient):
-    """Eliminazione item inesistente → 404 Not Found."""
-    headers = await get_auth_headers(client)
-    response = await client.delete("/items/9999", headers=headers)
+async def test_delete_article_not_found(client: AsyncClient, db: AsyncSession):
+    """Eliminazione articolo inesistente → 404."""
+    headers = await create_admin_and_login(client, db)
+    response = await client.delete("/articles/9999", headers=headers)
     assert response.status_code == 404
 
 
-# ─── Test: isolamento tra utenti ─────────────────────────────────────────────
-async def test_user_isolation(client: AsyncClient):
-    """
-    SICUREZZA: un utente non può accedere agli item di un altro.
-    Questo è il test più importante — verifica che l'ownership funzioni.
-    """
-    user_a = {"email": "a@test.com", "password": "pass123"}
-    user_b = {"email": "b@test.com", "password": "pass123"}
-
-    # Registra e logga entrambi gli utenti
-    await client.post("/auth/register", json=user_a)
-    await client.post("/auth/register", json=user_b)
-    token_a = (await client.post("/auth/login", json=user_a)).json()["access_token"]
-    token_b = (await client.post("/auth/login", json=user_b)).json()["access_token"]
-    headers_a = {"Authorization": f"Bearer {token_a}"}
-    headers_b = {"Authorization": f"Bearer {token_b}"}
-
-    # L'utente A crea un item
-    created = await client.post("/items", json=ITEM, headers=headers_a)
-    item_id = created.json()["id"]
-
-    # L'utente B non deve poter vedere l'item dell'utente A
-    response = await client.get(f"/items/{item_id}", headers=headers_b)
-    assert response.status_code == 404
+async def test_delete_article_no_token(client: AsyncClient):
+    """Eliminazione senza token → 403 Forbidden."""
+    response = await client.delete("/articles/1")
+    assert response.status_code == 403

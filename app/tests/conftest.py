@@ -6,11 +6,9 @@ from app.main import app as fastapi_app
 from app.db.base import Base
 from app.core.dependencies import get_db
 import app.models.user
-import app.models.article  # ← Aggiungi qui i tuoi modelli
+import app.models.article
 
-# ─── Database di test ─────────────────────────────────────────────────────────
-# SQLite in memoria — esiste solo durante i test, non tocca mai il DB reale.
-# "/:memory:" = database temporaneo in RAM, distrutto alla fine dei test.
+# Test DB in-memory
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 engine = create_async_engine(DATABASE_URL, echo=False)
@@ -20,12 +18,17 @@ TestSessionLocal = async_sessionmaker(
     class_=AsyncSession,
 )
 
-# ─── Fixture: setup database ──────────────────────────────────────────────────
-# scope="session" = eseguita una volta sola per tutta la sessione di test.
-# autouse=True = applicata automaticamente senza doverla richiedere nei test.
+# Fixture: expose session
+@pytest_asyncio.fixture
+async def db():
+    """ Exposes the DB session to tests that need it directly """
+    async with TestSessionLocal() as session:
+        yield session
+
+# Fixture: setup database
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
-    """Crea tutte le tabelle prima dei test, le elimina alla fine."""
+    """ Create all tables before testing, delete them afterward """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -33,12 +36,10 @@ async def setup_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-# ─── Fixture: pulizia database ────────────────────────────────────────────────
-# scope="function" (default) = eseguita prima e dopo ogni singolo test.
-# Garantisce che ogni test parta con un DB pulito — i test sono indipendenti.
+# Fixture: clean database
 @pytest_asyncio.fixture(autouse=True)
 async def clean_db():
-    """Svuota tutte le tabelle dopo ogni test."""
+    """ Clear all tables after each test """
     yield
     async with engine.begin() as conn:
         # sorted_tables in ordine inverso rispetta le foreign key
@@ -46,9 +47,7 @@ async def clean_db():
             await conn.execute(table.delete())
 
 
-# ─── Fixture: client HTTP ─────────────────────────────────────────────────────
-# Sostituisce get_db con la versione SQLite per i test.
-# ASGITransport simula il server HTTP senza avviarne uno reale.
+# Fixture: client HTTP
 @pytest_asyncio.fixture
 async def client():
     """
@@ -62,7 +61,7 @@ async def client():
             finally:
                 await session.close()
 
-    # dependency_overrides sostituisce get_db con la versione di test
+    # dependency_overrides replace get_db with the test version
     fastapi_app.dependency_overrides[get_db] = override_get_db
 
     async with AsyncClient(
@@ -71,5 +70,5 @@ async def client():
     ) as ac:
         yield ac
 
-    # Ripristina le dependency originali dopo il test
+    # Restore the original dependencies after testing
     fastapi_app.dependency_overrides.clear()

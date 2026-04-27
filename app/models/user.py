@@ -8,7 +8,6 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.article import Article
 
-
 class User(Base):
     """ User model """
     __tablename__ = "users"
@@ -26,4 +25,4 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationship with Article
-    items: Mapped[List["Article"]] = relationship("Article", back_populates="owner", cascade="all, delete-orphan")
+    articles: Mapped[List["Article"]] = relationship("Article", back_populates="owner", cascade="all, delete-orphan")

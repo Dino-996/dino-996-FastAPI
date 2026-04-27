@@ -17,6 +17,6 @@ main.include_router(auth.router)
 main.include_router(article.router)
 
 # Health check
-@app.get("/health", tags=["system"])
+@main.get("/health", tags=["system"])
 async def health():
     return {"status": "ok"}

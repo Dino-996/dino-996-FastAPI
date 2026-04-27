@@ -20,7 +20,7 @@ async def create_admin() -> None:
 
     async with async_session() as session:
         # Check if there is an admin
-        result = await session.execute(select(User)).where(User.is_admin==True)
+        result = await session.execute(select(User).where(User.is_admin==True))
         existing = result.scalar_one_or_none()
         if existing:
             print(f"Admin already exists: {existing.email}")
