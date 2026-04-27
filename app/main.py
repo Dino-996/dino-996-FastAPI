@@ -9,6 +9,9 @@ import app.models.article
 # FastAPI
 main = FastAPI(
     title=settings.app_name,
+    description=settings.description,
+    version=settings.version
+
     # Swagger UI avaible on /docs
 )
 
