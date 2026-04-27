@@ -49,7 +49,7 @@ async def update_article(article_id: int, payload: ArticleUpdate, db: AsyncSessi
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")
 
     # Update only fields that are not None in the payload
-    update_data = payload.model_dump(exclude_none=True)
+    update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(article, field, value)
 

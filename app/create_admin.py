@@ -1,4 +1,6 @@
 import asyncio
+import app.models.article
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
