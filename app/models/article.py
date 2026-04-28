@@ -16,13 +16,13 @@ class Article(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
     # Fields
-    title: Mapped[str] = mapped_column(String(225), nullable=False)
-    description: Mapped[str] = mapped_column(String(225), nullable=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=True)
     tags: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
     date: Mapped[datetime] = mapped_column(Date, nullable=False)
-    excerpt: Mapped[str] = mapped_column(String(225), nullable=True)
-    image: Mapped[str] = mapped_column(String(225), nullable=True)
-    imageAlt: Mapped[str] = mapped_column(String(225), nullable=True)
+    excerpt: Mapped[str] = mapped_column(String(255), nullable=True)
+    image: Mapped[str] = mapped_column(String(255), nullable=True)
+    imageAlt: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # Ownership
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
