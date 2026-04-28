@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routers import auth, article
 
@@ -8,6 +9,13 @@ main = FastAPI(
     description=settings.description or "",
     version=settings.version or "1.0.0"
     # Swagger UI avaible on /docs
+)
+
+main.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://dino-996.github.io"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Router registration

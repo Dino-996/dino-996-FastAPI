@@ -1,4 +1,5 @@
 # Script separato: python -m app/services/create_admin.py
+import asyncio
 
 from sqlalchemy import select
 
@@ -7,7 +8,7 @@ from app.core.security import hash_password
 from app.db.session import engine, AsyncSessionLocal
 from app.db.base import Base
 
-async def create_admin() -> None:
+async def _create_admin() -> None:
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 
@@ -16,7 +17,6 @@ async def create_admin() -> None:
         existing = result.scalar_one_or_none()
         if existing:
             print(f"Admin already exists: {existing.email}")
-            IS_ADMIN = True
             return
 
         email = input("Admin email: ").strip()
@@ -35,3 +35,6 @@ async def create_admin() -> None:
         session.add(admin)
         await session.commit()
         print(f"Admin created: {email}")
+
+if __name__ == "__main__":
+    asyncio.run(_create_admin())
