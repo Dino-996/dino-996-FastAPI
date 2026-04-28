@@ -35,4 +35,10 @@ class ArticleResponse(BaseModel):
     imageAlt: str | None = Field(title="Image Alt Text", description="Alternative text for the article image for accessibility purposes", default=None)
     content: str | None = Field(title="Content", description="Full article body in Markdown", default=None)
 
+class PaginatedArticles(BaseModel):
+    total: int = Field(..., title="Total", description="Total number of articles in the database")
+    limit: int = Field(..., title="Limit", description="Maximum number of articles returned")
+    offset: int = Field(..., title="Offset", description="Number of articles skipped")
+    items: list[ArticleResponse] = Field(..., title="Items", description="List of articles for the current page")
+
     model_config = {"from_attributes": True}

@@ -1,27 +1,38 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.article import Article
 from app.models.user import User
-from app.schemas.article import ArticleCreate, ArticleUpdate, ArticleResponse
+from app.schemas.article import ArticleCreate, ArticleUpdate, ArticleResponse, PaginatedArticles
 from app.services.article import get_article_or_404
 from app.services.exceptions import ArticleNotFound, ArticleForbidden
 
 router = APIRouter(prefix="/articles", tags=["articles"])
 
-# GET all articles
-@router.get(path="", response_model=list[ArticleResponse])
-async def list_articles(limit: int = Query(5, ge=1, le=20), offset: int = Query(0, ge=0), db: AsyncSession = Depends(get_db)):
-    """ Returns the list of articles of the authenticated user"""
+# GET all paginated articles
+@router.get(path="", response_model=PaginatedArticles)
+async def list_articles(limit: int = Query(5, ge=1, le=20), offset: int=Query(0, ge=0), db: AsyncSession=Depends(get_db)):
+    """ Returns paginated articles with metadata """
+    total_result = await db.execute(select(func.count()).select_from(Article))
+    total = total_result.scalar_one()
+
     result = await db.execute(
         select(Article)
         .order_by(Article.created_at.desc())
         .limit(limit)
         .offset(offset)
-    )
-    return result.scalars().all()
+        )
+    
+    items = result.scalars().all()
+
+    return PaginatedArticles(
+        total=total, 
+        limit=limit, 
+        offset=offset, 
+        items=items #type:ignore
+        )
 
 # GET single article
 @router.get(path="/{article_id}", response_model=ArticleResponse)
