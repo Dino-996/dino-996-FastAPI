@@ -1,4 +1,4 @@
-# Script separato: python -m app/create_admin.py
+# Script separato: python -m app/services/create_admin.py
 
 from sqlalchemy import select
 
