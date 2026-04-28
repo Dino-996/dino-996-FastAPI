@@ -1,116 +1,203 @@
-# FastAPI Template
+# dino-996-FastAPI
 
-Template riutilizzabile per API REST con autenticazione JWT e CRUD.
+REST API for personal blog content management. Exposes public endpoints for reading articles and protected endpoints for creating, updating, and deleting content, accessible only to the administrator via JWT authentication.
 
-## Stack
-- Python 3.12.x
-- FastAPI + Uvicorn
-- SQLAlchemy (async) + PostgreSQL + Alembic
-- Pydantic v2 + pydantic-settings
-- JWT (python-jose) + bcrypt (passlib)
-- pytest + pytest-asyncio + SQLite in memoria per i test
+## Tech Stack
 
----
-
-## Checklist per ogni nuovo progetto
-
-### 1. Setup iniziale
-- [ ] Copia questa cartella e rinominala
-- [ ] `python -m venv .venv && .venv\Scripts\Activate.ps1`
-- [ ] `pip install -r requirements.txt`
-- [ ] Copia `.env.example` in `.env` e compila i valori
-- [ ] Genera SECRET_KEY: `python -c "import secrets; print(secrets.token_hex(32))"`
-- [ ] Crea DB e utente PostgreSQL
-
-### 2. Personalizza la risorsa principale
-- [ ] Rinomina `app/models/item.py` → es. `book.py`
-- [ ] Rinomina la classe `Item` → es. `Book`
-- [ ] Aggiorna `__tablename__` → es. `"books"`
-- [ ] Modifica i campi del modello (name, description → title, author, isbn...)
-- [ ] Aggiorna la relazione in `app/models/user.py` (items → books)
-- [ ] Rinomina `app/schemas/item.py` → es. `book.py`
-- [ ] Aggiorna gli schemi (ItemCreate, ItemUpdate, ItemResponse → BookCreate...)
-- [ ] Rinomina `app/routers/items.py` → es. `books.py`
-- [ ] Aggiorna prefix e tag del router (`/items` → `/books`)
-- [ ] Aggiorna gli import in `app/main.py`
-- [ ] Aggiorna gli import in `alembic/env.py`
-- [ ] Aggiorna gli import in `app/tests/conftest.py`
-- [ ] Rinomina e aggiorna `app/tests/test_items.py`
-
-### 3. Migrazioni e avvio
-- [ ] `alembic init alembic` (se non già fatto)
-- [ ] `alembic revision --autogenerate -m "initial"`
-- [ ] `alembic upgrade head`
-- [ ] `python run.py`
-- [ ] Apri http://127.0.0.1:8000/docs
-
-### 4. Test
-- [ ] `pytest app/tests/ -v`
-- [ ] Tutti i test devono essere verdi prima del deploy
+- **Python** 3.12.x
+- **FastAPI** + Uvicorn
+- **SQLAlchemy** (async) + Supabase (PostgreSQL) + Alembic
+- **Pydantic** v2 + pydantic-settings
+- **JWT** (python-jose) + bcrypt (passlib)
+- **pytest** + pytest-asyncio + in-memory SQLite for tests
 
 ---
 
-## Struttura del progetto
+## Project Structure
 
 ```
 ├── app/
 │   ├── core/
-│   │   ├── config.py       # Variabili d'ambiente (.env)
-│   │   ├── security.py     # bcrypt + JWT
-│   │   └── dependencies.py # get_db, get_current_user
+│   │   ├── config.py         # Environment variables (.env)
+│   │   ├── security.py       # bcrypt + JWT
+│   │   └── dependencies.py   # get_db, get_current_user
 │   ├── db/
-│   │   ├── base.py         # Base SQLAlchemy
-│   │   └── session.py      # Engine + SessionLocal
+│   │   ├── base.py           # SQLAlchemy Base
+│   │   └── session.py        # Engine + SessionLocal
 │   ├── models/
-│   │   ├── user.py         # Tabella users (NON modificare)
-│   │   └── item.py         # ← Rinomina con la tua risorsa
+│   │   ├── user.py           # users table
+│   │   └── article.py        # articles table
 │   ├── schemas/
-│   │   ├── user.py         # Schemi utente (NON modificare)
-│   │   ├── token.py        # Schema token (NON modificare)
-│   │   └── item.py         # ← Rinomina con la tua risorsa
+│   │   ├── user.py           # User schemas
+│   │   ├── token.py          # Token schema
+│   │   └── article.py        # Article schemas
 │   ├── routers/
-│   │   ├── auth.py         # Login, register, refresh, me (NON modificare)
-│   │   └── items.py        # ← Rinomina con la tua risorsa
+│   │   ├── auth.py           # Login, refresh, me
+│   │   └── article.py        # Article CRUD
 │   ├── tests/
-│   │   ├── conftest.py     # Fixture pytest (aggiorna import modelli)
-│   │   ├── test_auth.py    # Test autenticazione (NON modificare)
-│   │   └── test_items.py   # ← Rinomina con la tua risorsa
-│   └── main.py             # Entry point
+│   │   ├── conftest.py       # pytest fixtures
+│   │   ├── test_auth.py      # Authentication tests
+│   │   └── test_articles.py  # Article tests
+│   ├── create_admin.py       # Admin user creation script
+│   └── main.py               # Entry point
 ├── alembic/
-│   └── env.py              # Configurazione migrazioni
-├── .env.example            # Template variabili d'ambiente
+│   └── env.py                # Migrations configuration
+├── .env.example              # Environment variables template
+├── alembic.ini
 ├── pytest.ini
 ├── requirements.txt
-└── run.py                  # Script di avvio
+└── run.py                    # Start script
 ```
 
 ---
 
-## Comandi utili
+## Local Development
+
+### 1. Virtual environment and dependencies
 
 ```powershell
-# Avvio server
-python run.py
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
 
-# Nuova migrazione dopo aver modificato i modelli
-alembic revision --autogenerate -m "descrizione"
-alembic upgrade head
+### 2. Environment variables
 
-# Annulla ultima migrazione
-alembic downgrade -1
+Copy `.env.example` to `.env` and fill in all values:
 
-# Test
-pytest app/tests/ -v
+```powershell
+copy .env.example .env
+```
 
-# Genera SECRET_KEY
+Generate a secure `SECRET_KEY` with:
+
+```powershell
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
- 
+
+### 3. Database
+
+Run the migrations against your Supabase database:
+
+```powershell
+alembic upgrade head
+```
+
+### 4. Admin user
+
+```powershell
+python -m app.create_admin
+```
+
+### 5. Start the server
+
+```powershell
+python run.py
+```
+
+Interactive API documentation (Swagger UI) is available at `http://127.0.0.1:8000/docs`.
+
 ---
 
-## Note
+## Deploy on Render + Supabase
 
-Fastapi -> framework per la creazione di API
-Uvicorn -> server web in locale
-Pydantic -> struttura lo schema dei dati (template pydantic) 
-Swagger -> documentazione API interattiva
+### Supabase — Database setup
+
+1. Create a new project on [Supabase](https://supabase.com)
+2. Go to **Project Settings → Database → Connection string**
+3. Copy the **URI** connection string and replace `postgresql://` with `postgresql+asyncpg://`
+4. Make sure the **Connection pooling** mode is set to **Session** (not Transaction), as Alembic requires a persistent connection for migrations
+
+The resulting `DATABASE_URL` should look like this:
+
+```
+postgresql+asyncpg://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres?ssl=require
+```
+
+### Render — Web Service setup
+
+Create a new **Web Service** on [Render](https://render.com) connected to this repository, then configure it as follows:
+
+| Field | Value |
+|-------|-------|
+| Runtime | `Python 3` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn app.main:main --host 0.0.0.0 --port $PORT` |
+
+### Environment variables
+
+In the **Environment** section of the Render Web Service, add all variables from `.env.example`, including the `DATABASE_URL` obtained from Supabase.
+
+### Migrations
+
+Migrations are not run automatically on deploy. You can handle them in two ways:
+
+**Option A — manually from the Render shell**, using the **Shell** tab of the Web Service:
+
+```bash
+alembic upgrade head
+```
+
+**Option B — automatically on every deploy**, by appending migrations to the build command:
+
+```
+pip install -r requirements.txt && alembic upgrade head
+```
+
+### Admin user
+
+Once the deploy is complete and migrations have run, create the admin user from the Render shell:
+
+```bash
+python -m app.create_admin
+```
+
+---
+
+## API Endpoints
+
+### Authentication (`/auth`)
+
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| `POST` | `/auth/login` | Login, returns access and refresh tokens | No |
+| `POST` | `/auth/refresh` | Renews tokens using the refresh token | No |
+| `GET` | `/auth/me` | Returns authenticated user data | Bearer token |
+
+### Articles (`/articles`)
+
+| Method | Path | Description | Auth |
+|--------|------|-------------|------|
+| `GET` | `/articles` | List articles with pagination (`limit`, `offset`) | No |
+| `GET` | `/articles/{id}` | Single article detail | No |
+| `POST` | `/articles` | Create a new article | Bearer token (admin) |
+| `PUT` | `/articles/{id}` | Update an existing article | Bearer token (admin) |
+| `DELETE` | `/articles/{id}` | Delete an article | Bearer token (admin) |
+
+### System
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Health check |
+
+---
+
+## Useful Commands
+
+```powershell
+# Start development server
+python run.py
+
+# Create a new migration after modifying models
+alembic revision --autogenerate -m "description"
+alembic upgrade head
+
+# Revert last migration
+alembic downgrade -1
+
+# Run tests
+pytest app/tests/ -v
+
+# Generate a SECRET_KEY
+python -c "import secrets; print(secrets.token_hex(32))"
+```
