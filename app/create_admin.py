@@ -1,14 +1,11 @@
-import asyncio
-import app.models.article
+# Script separato: python -m app/create_admin.py
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.core.security import hash_password
-from app.db.session import engine, AsyncSessionLocal  # ← riusa l'engine esistente
+from app.db.session import engine, AsyncSessionLocal
 from app.db.base import Base
-
 
 async def create_admin() -> None:
     async with engine.begin() as connection:
@@ -19,6 +16,7 @@ async def create_admin() -> None:
         existing = result.scalar_one_or_none()
         if existing:
             print(f"Admin already exists: {existing.email}")
+            IS_ADMIN = True
             return
 
         email = input("Admin email: ").strip()

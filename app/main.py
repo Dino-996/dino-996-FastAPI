@@ -1,17 +1,13 @@
 from fastapi import FastAPI
+import create_admin as admin
 from app.core.config import settings
 from app.routers import auth, article
 
-# Models
-import app.models.user
-import app.models.article
-
 # FastAPI
 main = FastAPI(
-    title=settings.app_name,
-    description=settings.description,
-    version=settings.version
-
+    title=settings.app_name or "",
+    description=settings.description or "",
+    version=settings.version or "1.0.0"
     # Swagger UI avaible on /docs
 )
 
