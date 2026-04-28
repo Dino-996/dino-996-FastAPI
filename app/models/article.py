@@ -23,6 +23,8 @@ class Article(Base):
     excerpt: Mapped[str] = mapped_column(String(255), nullable=True)
     image: Mapped[str] = mapped_column(String(255), nullable=True)
     imageAlt: Mapped[str] = mapped_column(String(255), nullable=True)
+    
+    content: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Ownership
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

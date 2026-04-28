@@ -10,6 +10,7 @@ class ArticleCreate(BaseModel):
     excerpt: str | None = Field(title="Excerpt", description="Preview text of the article", default=None, max_length=225)
     image: str | None = Field(title="Image URL", description="URL of the main image associated with the article", default=None)
     imageAlt: str | None = Field(title="Image Alt Text", description="Alternative text for the article image for accessibility purposes", default=None)
+    content: str | None = Field(title="Content", description="Full article body in Markdown", default=None)
 
 class ArticleUpdate(BaseModel):
     """Update article"""
@@ -20,6 +21,7 @@ class ArticleUpdate(BaseModel):
     excerpt: str | None = Field(title="Excerpt", description="Preview text of the article", default=None)
     image: str | None = Field(title="Image URL", description="URL of the main image associated with the article", default=None)
     imageAlt: str | None = Field(title="Image Alt Text", description="Alternative text for the article image for accessibility purposes", default=None)
+    content: str | None = Field(title="Content", description="Full article body in Markdown", default=None)
 
 class ArticleResponse(BaseModel):
     """Get article"""
@@ -31,5 +33,6 @@ class ArticleResponse(BaseModel):
     excerpt: str | None = Field(title="Excerpt", description="Preview text of the article", default=None, max_length=225)
     image: str | None = Field(title="Image URL", description="URL of the main image associated with the article", default=None)
     imageAlt: str | None = Field(title="Image Alt Text", description="Alternative text for the article image for accessibility purposes", default=None)
+    content: str | None = Field(title="Content", description="Full article body in Markdown", default=None)
 
     model_config = {"from_attributes": True}
