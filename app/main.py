@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-import create_admin as admin
 from app.core.config import settings
 from app.routers import auth, article
 
