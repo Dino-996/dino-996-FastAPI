@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.core.limiter import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError
@@ -7,13 +8,15 @@ from app.core.security import (verify_password, create_access_token, create_refr
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, RefreshRequest
 from app.schemas.token import Token
+from app.main import limiter
 
 # Authentication
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/login", response_model=Token)
-async def login(payload: UserCreate, db: AsyncSession = Depends(get_db)):
-    """ User login """
+@limiter.limit("5/minute")
+async def login(request: Request, payload: UserCreate, db: AsyncSession = Depends(get_db)):
+    """ User login - max 5 requests per minute per IP """
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 

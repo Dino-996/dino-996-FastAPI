@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.limiter import limiter
+
 from app.core.config import settings
 from app.routers import auth, article
 
@@ -10,6 +12,8 @@ main = FastAPI(
     version=settings.version or "1.0.0"
     # Swagger UI avaible on /docs
 )
+
+main.state.limiter = limiter
 
 main.add_middleware(
     CORSMiddleware,
